@@ -8,33 +8,44 @@
 import SwiftUI
 
 struct OnboardingContainerView: View {
-    @StateObject private var viewModel = OnboardingViewModel()
+    @StateObject private var onboardingViewModel = OnboardingViewModel()
+    @StateObject private var authViewModel = AuthenticationViewModel()
     
     var body: some View {
         ZStack {
-            switch viewModel.state {
+            switch onboardingViewModel.state {
             case .splash:
-                SplashScreen(viewModel: viewModel)
+                SplashScreen(viewModel: onboardingViewModel)
                     .transition(.opacity)
                 
             case .onboarding:
-                OnboardingView(viewModel: viewModel)
+                OnboardingView(viewModel: onboardingViewModel)
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing),
                         removal: .move(edge: .leading)
                     ))
                 
             case .completed:
-                MainAppView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing),
-                        removal: .move(edge: .leading)
-                    ))
+                // After onboarding completion, show authentication or main app
+                Group {
+                    switch authViewModel.state {
+                    case .unauthenticated, .authenticating:
+                        AuthenticationContainerView()
+                    case .authenticated:
+                        MainAppView()
+                    }
+                }
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing),
+                    removal: .move(edge: .leading)
+                ))
             }
         }
-        .animation(.easeInOut(duration: 0.5), value: viewModel.state)
+        .animation(.easeInOut(duration: 0.5), value: onboardingViewModel.state)
+        .animation(.easeInOut(duration: 0.5), value: authViewModel.state)
         .onAppear {
-            viewModel.checkOnboardingStatus()
+            onboardingViewModel.checkOnboardingStatus()
+            authViewModel.checkAuthenticationStatus()
         }
     }
 }
@@ -54,21 +65,44 @@ struct MainAppView: View {
                         .fontWeight(.bold)
                         .foregroundColor(AppColors.textPrimary)
                     
-                    Text("Onboarding completed successfully")
+                    Text("You're successfully authenticated and ready to learn!")
                         .font(AppTypography.bodyLarge)
                         .foregroundColor(AppColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
                 
-                AppButton("Reset Onboarding", style: .outline) {
-                    // Reset onboarding for testing
-                    UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                       let window = windowScene.windows.first {
-                        window.rootViewController = UIHostingController(rootView: OnboardingContainerView())
-                        window.makeKeyAndVisible()
+                VStack(spacing: AppSpacing.md) {
+                    AppButton("Sign Out", style: .outline) {
+                        // Sign out and return to authentication
+                        UserDefaults.standard.set(false, forKey: "isAuthenticated")
+                        UserDefaults.standard.removeObject(forKey: "userEmail")
+                        
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let window = windowScene.windows.first {
+                            window.rootViewController = UIHostingController(rootView: OnboardingContainerView())
+                            window.makeKeyAndVisible()
+                        }
+                    }
+                    
+                    AppButton("Reset Onboarding", style: .text) {
+                        // Reset onboarding for testing
+                        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+                        UserDefaults.standard.set(false, forKey: "isAuthenticated")
+                        UserDefaults.standard.removeObject(forKey: "userEmail")
+                        
+                        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                           let window = windowScene.windows.first {
+                            window.rootViewController = UIHostingController(rootView: OnboardingContainerView())
+                            window.makeKeyAndVisible()
+                        }
                     }
                 }
+            }
+            .padding(AppSpacing.xl)
+            .navigationTitle("EduApp")
+        }
+    }
+}
             }
             .padding(AppSpacing.xl)
             .navigationTitle("EduApp")
