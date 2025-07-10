@@ -11,7 +11,7 @@ import SwiftUI
 struct education_iosApp: App {
     var body: some Scene {
         WindowGroup {
-            OnboardingContainerView()
+            AppContainerView()
         }
     }
 }

@@ -9,6 +9,11 @@ import SwiftUI
 
 struct OnboardingContainerView: View {
     @StateObject private var viewModel = OnboardingViewModel()
+    let onCompletion: (() -> Void)?
+    
+    init(onCompletion: (() -> Void)? = nil) {
+        self.onCompletion = onCompletion
+    }
     
     var body: some View {
         ZStack {
@@ -25,11 +30,18 @@ struct OnboardingContainerView: View {
                     ))
                 
             case .completed:
-                MainAppView()
-                    .transition(.asymmetric(
-                        insertion: .move(edge: .trailing),
-                        removal: .move(edge: .leading)
-                    ))
+                if let onCompletion = onCompletion {
+                    // Use the callback instead of showing MainAppView directly
+                    Color.clear.onAppear {
+                        onCompletion()
+                    }
+                } else {
+                    MainAppView()
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing),
+                            removal: .move(edge: .leading)
+                        ))
+                }
             }
         }
         .animation(.easeInOut(duration: 0.5), value: viewModel.state)
